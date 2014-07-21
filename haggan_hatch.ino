@@ -17,17 +17,21 @@
 Servo myservo;
 int pos = 93;    // variable to store the servo position 
 int sign =1;
-unsigned long lastMillis;
+unsigned long lastMillis,lastMillis2;
 double Setpoint, Input,Output;
 float humidity;
-double underKp=500, underKi=0, underKd=0;
+double underKp=2546, underKi=0, underKd=0;
+double consKp=350, consKi=0.35, consKd=0;
 //double consKp=350, consKi=0.35, consKd=0;
-//double consKp=350, consKi=0.35, consKd=0;
-double consKp=400, consKi=0, consKd=0;
+//double consKp=2546, consKi=97.09, consKd=0;
+//double consKp=3703, consKi=182, consKd=5383;
+
 //double consKp=2469.31, consKi=3133.83, consKd=1056.93;
 //2546.48 ki: 88.83
 //2546.48 ki: 97.09 kd: 0.00
-
+P(leftbracket) ="[";
+  P(rightbracket) ="]";
+  P(semi) =",";
 
 PID myPID(&Input, &Output, &Setpoint,underKp,underKi,underKd, DIRECT);
 
@@ -89,6 +93,33 @@ WebServer webserver(PREFIX, 80);
 #define NAMELEN 32
 #define VALUELEN 32
 
+void setCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete)
+{
+  URLPARAM_RESULT rc;
+  char name[NAMELEN];
+  char value[VALUELEN];
+  double webP,webI,webD;
+  webP=myPID.GetKp();
+  webI=myPID.GetKi();
+  webD=myPID.GetKd();
+  P(Page_start) = "<html><head><title>HAGGAN HATCHER INPUT</title></head><body>\n";
+  P(Page_end) = "</body></html>";
+  P(Params_end) = "End of parameters<br>\n";
+  P(Parsed_item_separator) = " = '";
+  server.httpSuccess();
+  if (type == WebServer::HEAD)
+    return;
+   server.printP(Page_start);
+   
+   if (strlen(url_tail))
+  {
+     while (strlen(url_tail))
+    {
+      rc = server.nextURLparam(&url_tail, name, NAMELEN, value, VALUELEN);
+    }
+  }
+}
+/*
 void parsedCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete)
 {
   URLPARAM_RESULT rc;
@@ -99,16 +130,12 @@ void parsedCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail
   webI=myPID.GetKi();
   webD=myPID.GetKd();
 
-  P(Page_start) = "<html><head><title>Web_Parms_1 Version </title></head><body>\n";
+  P(Page_start) = "<html><head><title>HAGGAN HATCHER INPUT</title></head><body>\n";
   P(Page_end) = "</body></html>";
   P(Params_end) = "End of parameters<br>\n";
   P(Parsed_item_separator) = " = '";
-  /* this line sends the standard "we're all OK" headers back to the
-   browser */
   server.httpSuccess();
 
-  /* if we're handling a GET or POST, we can output our data here.
-   For a HEAD request, we just stop after outputting headers. */
   if (type == WebServer::HEAD)
     return;
 
@@ -123,9 +150,9 @@ void parsedCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail
         server.printP(Params_end);
       else
       {
-        server.print(name);
-        server.printP(Parsed_item_separator);
-        server.print(value);
+      //  server.print(name);
+      //  server.printP(Parsed_item_separator);
+      //  server.print(value);
         if(name == "MODE")myPID.SetMode(int(value));
         if(name == "OUTPUT")Output=strtod(value,NULL);
         if(name == "P")webP=strtod(value,NULL);
@@ -135,13 +162,28 @@ void parsedCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail
       }
     }
   }
+  myPID.SetTunings(webP, webI, webD);
+
+  server.printP(leftbracket);
+  server.print(Output);
+  server.printP(semi);
+  server.print(myPID.GetMode());
+  server.printP(semi);
+  server.print(myPID.GetKp());
+  server.printP(semi);
+  server.print(myPID.GetKi());
+  server.printP(semi);
+  server.print(myPID.GetKd());
+  server.printP(rightbracket);
 
   server.printP(Page_end);
   
-  myPID.SetTunings(webP, webI, webD);
+  
+
 
 }
 
+*/
 /* commands are functions that get called by the webserver framework
  * they can read any posted data from client, and they output to the
  * server to send data back to the web browser. */
@@ -150,9 +192,7 @@ void sendTempHum(WebServer &server, WebServer::ConnectionType type, char *, bool
 
   server.httpSuccess("Content-type: text/json");
 
-  P(leftbracket) ="[";
-  P(rightbracket) ="]";
-  P(semi) =",";
+  
 
   if (type != WebServer::HEAD)
   {
@@ -196,7 +236,7 @@ void setup()
   myservo.write(93);
   pinMode(FanPin, OUTPUT); 
   pinMode(RelayPin, OUTPUT); 
-  Setpoint = 37.44;
+  Setpoint = 37.56;
   lastMillis = millis(); 
   //HUM
   HIH4030::setup(PIN_HIH4030);
@@ -231,7 +271,7 @@ void setup()
   /* setup our default command that will be run when the user accesses
    * the root page on the server */
   webserver.setDefaultCommand(&helloCmd);
-//  webserver.addCommand("set", &parsedCmd);
+  //webserver.addCommand("set", &setCmd);
 
   /* run the same command if you try to load /index.html, a common
    * default page name */
@@ -245,15 +285,16 @@ void setup()
 
   //turn the PID on
   myPID.SetMode(AUTOMATIC);
+//  myPID.SetMode(MANUAL);
   FlexiTimer2::set(10,1.0/1000, relayInterupt); //Interrupt every 1/1000 milisec
   FlexiTimer2::start();
 }
 
 void loop()
 {
-  if(Input>32)myPID.SetOutputLimits(0, 600);
+  if(Input>32)myPID.SetOutputLimits(0, 800);
 
-  if(Input>37)myPID.SetOutputLimits(0, 500);
+//  if(Input>37)myPID.SetOutputLimits(0, 500);
 
   if(Output < millis() - windowStartTime) 
   {
@@ -266,13 +307,22 @@ void loop()
     FlexiTimer2::start();
 
   }
+/*
+if (millis() - lastMillis2 > 120000)
+  {
+    lastMillis2 = millis();
+    if(Output==1000)Output=0;
+    else Output=1000;
+    
+  }
+  */
 
   if (millis() - lastMillis > 2000 && sign!= 0)
   {
     lastMillis = millis();
     myservo.write(pos+=sign);
     //Serial.println(pos);
-    if(pos == 140 || pos == 25)
+    if(pos == 135 || pos == 20)
     {
       sign=0;
       myservo.detach();
@@ -282,12 +332,12 @@ void loop()
   if(minute() == 15 || minute() == 30 || minute() == 45 || minute() == 0 )
   { 
     Serial.println(minute());
-    if(pos == 140) 
+    if(pos == 138) 
     {
       sign=-1;
       myservo.attach(9);
     }
-    if(pos == 25)
+    if(pos == 23)
     {
       sign=1;
       myservo.attach(9);
@@ -296,8 +346,8 @@ void loop()
 
   //HEAT SAFETY
   if(Input>41) digitalWrite(RelayPin,LOW);
-  if(Input>34 && Input<37.8)myPID.SetTunings(consKp, consKi, consKd);
-  if(Input>37.8){
+  if(Input>34 && Input<38)myPID.SetTunings(consKp, consKi, consKd);
+  if(Input>38){
     myPID.SetTunings(underKp, underKi, underKd);
     digitalWrite(FanPin,HIGH);
   }

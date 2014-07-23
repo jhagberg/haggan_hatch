@@ -1,6 +1,3 @@
-/* Web_HelloWorld.pde - very simple Webduino example */
-
-
 #include "SPI.h"
 #include "Ethernet.h"
 #define WEBDUINO_FAVICON_DATA ""
@@ -18,7 +15,7 @@ Servo myservo;
 int pos = 93;    // variable to store the servo position 
 int sign =1;
 unsigned long lastMillis,lastMillis2;
-double Setpoint, Input,Output;
+double Setpoint, Input,Output,Input2;
 float humidity;
 double underKp=2546, underKi=0, underKd=0;
 double consKp=350, consKi=0.35, consKd=0;
@@ -302,7 +299,12 @@ void loop()
     //digitalSmooth(sensors.getTempCByIndex(0), tempSmoothArray);     
     //Input = digitalSmooth(sensors.getTempCByIndex(1), tempSmoothArray); 
     FlexiTimer2::stop();
-    Input = sensors.getTempCByIndex(0); 
+    Input2 = sensors.getTempCByIndex(0); 
+    if(Input2!=85 || Input2!=-127)
+  {
+    Input = Input2;
+  }
+
     humidity=HIH4030::read(PIN_HIH4030, Input);
     FlexiTimer2::start();
 

@@ -324,14 +324,14 @@ if (millis() - lastMillis2 > 120000)
     lastMillis = millis();
     myservo.write(pos+=sign);
     //Serial.println(pos);
-    if(pos == 135 || pos == 20)
+    if(pos == 138 || pos == 23)
     {
       sign=0;
       myservo.detach();
     }
   }
   //TURN EGG   
-  if(minute() == 15 || minute() == 30 || minute() == 45 || minute() == 0 )
+  if(minute() == 15 || minute() == 30 || minute() == 45 || minute() == 00 )
   { 
     Serial.println(minute());
     if(pos == 138) 

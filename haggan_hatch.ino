@@ -1,3 +1,14 @@
+//2 STH15 data pin
+//3 STH15 clock pin
+//5 ONE wire bus
+//6 DHT22 data pin
+//7 over heat fan 
+//8 Heat relay 
+//9 hum ionizer relay pin
+//A0 HIH4030
+//ethenet use 10,11,12,13 or 50,51,52 and pin 4 and 53
+
+
 #include "SPI.h"
 #include "Ethernet.h"
 #define WEBDUINO_FAVICON_DATA ""

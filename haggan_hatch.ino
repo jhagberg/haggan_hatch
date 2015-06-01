@@ -5,7 +5,7 @@
 //A5 DHT22 data pin
 //7 over heat fan 
 //8 Heat relay 
-//9 Servo pin for egg turning
+//6 Servo pin for egg turning
 
 //A1 HIH4030
 //ethenet use 10,11,12,13 or 50,51,52 and pin 4 and 53
@@ -27,6 +27,7 @@
 #include "DHT.h"
 
 Servo myservo;
+int Servopin=6;
 int pos = 93;    // variable to store the servo position 
 int sign =1;
 unsigned long lastMillis,lastMillis2;
@@ -267,7 +268,7 @@ void setup()
 {
 
   Serial.begin(9600);
-  myservo.attach(9);  // attaches the servo on pin 9 to the servo object 
+  myservo.attach(Servopin);  // attaches the servo on pin 6 to the servo object 
   myservo.write(93);
   pinMode(FanPin, OUTPUT); 
   pinMode(RelayPin, OUTPUT); 
@@ -422,12 +423,12 @@ if (millis() - lastMillis2 > 120000)
     if(pos == 138) 
     {
       sign=-1;
-      myservo.attach(9);
+      myservo.attach(Servopin);
     }
     if(pos == 23)
     {
       sign=1;
-      myservo.attach(9);
+      myservo.attach(Servopin);
     }
   }    
 
@@ -436,9 +437,10 @@ if (millis() - lastMillis2 > 120000)
   if(Input>34 && Input<38)myPID.SetTunings(consKp, consKi, consKd);
   if(Input>38){
     myPID.SetTunings(underKp, underKi, underKd);
-    digitalWrite(FanPin,HIGH);
+    //LOW is = ON
+    digitalWrite(FanPin,LOW);
   }
-  else digitalWrite(FanPin,LOW);  
+  else digitalWrite(FanPin,HIGH);  
   //TurnEggs();
   //char buff[64];
   //int len = 64;

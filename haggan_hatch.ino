@@ -1,11 +1,13 @@
+//0 hum ionizer relay pin
 //2 STH15 data pin
 //3 STH15 clock pin
-//5 ONE wire bus
-//6 DHT22 data pin
+//5     ONE wire bus
+//A5 DHT22 data pin
 //7 over heat fan 
 //8 Heat relay 
-//9 hum ionizer relay pin
-//A0 HIH4030
+//9 Servo pin for egg turning
+
+//A1 HIH4030
 //ethenet use 10,11,12,13 or 50,51,52 and pin 4 and 53
 
 
@@ -21,12 +23,14 @@
 #include <DallasTemperature.h>
 #include <PID_v1.h>
 #include <HIH4030.h>
+#include <SHT1x.h>
+#include "DHT.h"
 
 Servo myservo;
 int pos = 93;    // variable to store the servo position 
 int sign =1;
 unsigned long lastMillis,lastMillis2;
-double Setpoint, Input,Output,Input2;
+double Setpoint, Input,Output;
 float humidity;
 double underKp=2546, underKi=0, underKd=0;
 double consKp=350, consKi=0.35, consKd=0;
@@ -43,10 +47,18 @@ P(leftbracket) ="[";
 
 PID myPID(&Input, &Output, &Setpoint,underKp,underKi,underKd, DIRECT);
 
-#define PIN_HIH4030 A0
+#define PIN_HIH4030 A1
 #define ONE_WIRE_BUS 5
 #define TEMPERATURE_PRECISION 12
 //#define filterSamples   20
+#define DHTPIN A5  
+#define DHTTYPE DHT22   
+DHT dht(DHTPIN, DHTTYPE);
+
+// Specify data and clock connections and instantiate SHT1x object
+#define dataPin  2
+#define clockPin 3
+SHT1x sht1x(dataPin, clockPin);
 
 #define RelayPin 8
 #define FanPin 7
@@ -58,6 +70,21 @@ OneWire oneWire(ONE_WIRE_BUS);
 
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature sensors(&oneWire);
+
+// Kalman Temp filter setup
+float P = 1.0;
+float varP = pow(0.01, 2);
+float varM = pow(0.5, 2);
+float K = 1.0;
+
+
+// Kalman Hum filter setup
+float Phum = 1.0;
+float varPhum = pow(0.01, 2);
+float varMhum = pow(0.5, 2);
+float Khum = 1.0;
+float Kalmanhum = 20.0;
+
 /*
 /* CHANGE THIS TO YOUR OWN UNIQUE VALUE.  The MAC number should be
  * different from any other devices on your network or you'll have
@@ -244,7 +271,7 @@ void setup()
   myservo.write(93);
   pinMode(FanPin, OUTPUT); 
   pinMode(RelayPin, OUTPUT); 
-  Setpoint = 37.56;
+  Setpoint = 37.5;
   lastMillis = millis(); 
   //HUM
   HIH4030::setup(PIN_HIH4030);
@@ -252,6 +279,7 @@ void setup()
   sensors.begin();
   sensors.requestTemperatures();
   sensors.setResolution(TEMPERATURE_PRECISION);
+  dht.begin();
   Input = sensors.getTempCByIndex(0);
 
 
@@ -300,6 +328,17 @@ void setup()
 
 void loop()
 {
+  float shttemp;
+  float shthum;
+  float dhttemp;
+  float dhthum;
+  float hihhum;
+  float dalltemp;
+  float avrt=0;
+  float avrh=0;
+  int avnum=0;
+  int avnumhum=0;
+  
   if(Input>32)myPID.SetOutputLimits(0, 800);
 
 //  if(Input>37)myPID.SetOutputLimits(0, 500);
@@ -310,15 +349,50 @@ void loop()
     //digitalSmooth(sensors.getTempCByIndex(0), tempSmoothArray);     
     //Input = digitalSmooth(sensors.getTempCByIndex(1), tempSmoothArray); 
     FlexiTimer2::stop();
-    Input2 = sensors.getTempCByIndex(0); 
-    if(Input2!=85 || Input2!=-127)
-  {
-    Input = Input2;
-  }
-
-    humidity=HIH4030::read(PIN_HIH4030, Input);
+    dalltemp = sensors.getTempCByIndex(0); 
+    shttemp=sht1x.readTemperatureC();
+    shthum=sht1x.readHumidity();
+    dhttemp=dht.readTemperature();
+    dhthum=dht.readHumidity();
+    
+    if (!isnan(dhttemp) && dhttemp!=0.00)
+      {
+      avrt=avrt+dhttemp;
+      avrh=avrh+dhthum;
+      avnum++;
+      avnumhum++;
+      }
+    if (shttemp>-39)
+        {
+        avrt=avrt+shttemp;
+        avrh=avrh+shthum;
+        avnum++; 
+        avnumhum++;
+        }
+    if(dalltemp!=85 && dalltemp!=-127)
+       {
+       avrt=avrt+dalltemp; 
+       avnum++;
+       }
+       //temp avrage
+       avrt=avrt/avnum;
+       //Kalman filter process for temp
+       P = P + varP;
+       K = P / (P + varM);    
+       Input = K * avrt + (1 - K) * Input;
+       P = (1 - K) * P;
+       
+       hihhum=HIH4030::read(PIN_HIH4030, Input);
+       if(hihhum>0 && hihhum<101)
+        {
+         avrh=avrh+hihhum;
+         avnumhum++; 
+        }
+        //hum Avrage
+        humidity=avrh/avnumhum;
+        
+        
     FlexiTimer2::start();
-
   }
 /*
 if (millis() - lastMillis2 > 120000)
@@ -399,14 +473,13 @@ void relayInterupt() {
   {
     digitalWrite(RelayPin,LOW);
   }
-  else if (Output >30 )
+  else if (Output >9 )
   {
     digitalWrite(RelayPin,HIGH);
   }
-  if(Input!=85 || Input!=-127)
-  {
-    myPID.Compute();
-  }
+ 
+  myPID.Compute();
+  
 
 }
 

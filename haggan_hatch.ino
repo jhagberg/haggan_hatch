@@ -376,12 +376,12 @@ void loop()
        avnum++;
        }
        //temp avrage
-       avrt=avrt/avnum;
+       Input=avrt/avnum;
        //Kalman filter process for temp
-       P = P + varP;
-       K = P / (P + varM);    
-       Input = K * avrt + (1 - K) * Input;
-       P = (1 - K) * P;
+       //P = P + varP;
+       //K = P / (P + varM);    
+       //Input = K * avrt + (1 - K) * Input;
+       //P = (1 - K) * P;
        
        hihhum=HIH4030::read(PIN_HIH4030, Input);
        if(hihhum>0 && hihhum<101)

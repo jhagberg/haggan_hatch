@@ -1,4 +1,4 @@
-//0 hum ionizer relay pin
+//A4 hum ionizer relay pin
 //A2 STH15 data pin
 //A3 STH15 clock pin
 //5     ONE wire bus
@@ -32,6 +32,7 @@ int pos = 93;    // variable to store the servo position
 int sign =1;
 unsigned long lastMillis,lastMillis2;
 double Setpoint, Input,Output;
+double humSetpoint, humInput,humOutput;
 float humidity;
 double underKp=2546, underKi=0, underKd=0;
 double consKp=350, consKi=0.35, consKd=0;
@@ -47,6 +48,7 @@ P(leftbracket) ="[";
   P(semi) =",";
 
 PID myPID(&Input, &Output, &Setpoint,underKp,underKi,underKd, DIRECT);
+PID humPID(&humInput, &humOutput, &humSetpoint,underKp,underKi,underKd, DIRECT);
 
 #define PIN_HIH4030 A1
 #define ONE_WIRE_BUS 5
@@ -62,6 +64,7 @@ DHT dht(DHTPIN, DHTTYPE);
 SHT1x sht1x(dataPin, clockPin);
 
 #define RelayPin 8
+#define humRelayPin A4
 #define FanPin 7
 int WindowSize = 4500;
 unsigned long windowStartTime;
@@ -72,6 +75,7 @@ OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature sensors(&oneWire);
 
+/*
 // Kalman Temp filter setup
 float P = 1.0;
 float varP = pow(0.01, 2);
@@ -85,6 +89,7 @@ float varPhum = pow(0.01, 2);
 float varMhum = pow(0.5, 2);
 float Khum = 1.0;
 float Kalmanhum = 20.0;
+*/
 
 /*
 /* CHANGE THIS TO YOUR OWN UNIQUE VALUE.  The MAC number should be
@@ -271,9 +276,14 @@ void setup()
   myservo.attach(Servopin);  // attaches the servo on pin 6 to the servo object 
   myservo.write(93);
   pinMode(FanPin, OUTPUT);
+  //relay card works HIGH is off and ground is on
   digitalWrite(FanPin,HIGH); 
   pinMode(RelayPin, OUTPUT); 
+  pinMode(humRelayPin, OUTPUT); 
+  digitalWrite(humRelayPin,HIGH); 
+  
   Setpoint = 37.5;
+  humSetpoint = 68;
   lastMillis = millis(); 
   //HUM
   HIH4030::setup(PIN_HIH4030);
@@ -283,7 +293,7 @@ void setup()
   sensors.setResolution(TEMPERATURE_PRECISION);
   dht.begin();
   Input = sensors.getTempCByIndex(0);
-
+  humInput = dht.readHumidity();
 
   /* initialize the Ethernet adapter */
   // start Ethernet and UDP
@@ -320,9 +330,11 @@ void setup()
   //  myPID.SetSampleTime(2000);
   //tell the PID to range between 0 and the full window size
   myPID.SetOutputLimits(0, 1500);
+  humPID.SetOutputLimits(200, 3000);
 
   //turn the PID on
   myPID.SetMode(AUTOMATIC);
+  humPID.SetMode(AUTOMATIC);
 //  myPID.SetMode(MANUAL);
   FlexiTimer2::set(10,1.0/1000, relayInterupt); //Interrupt every 1/1000 milisec
   FlexiTimer2::start();
@@ -399,6 +411,7 @@ void loop()
 */
         //hum Avrage
         humidity=avrh/avnumhum;
+        humInput=humidity;
         Serial.print("TEMP: ");
 //	Serial.print(shttemp, DEC);        
   //      Serial.print(",");
@@ -505,8 +518,18 @@ void relayInterupt() {
   {
     digitalWrite(RelayPin,HIGH);
   }
+
+ if(humOutput < myNow - windowStartTime) 
+  {
+    digitalWrite(humRelayPin,HIGH);
+  }
+  else if (humOutput >200 )
+  {
+    digitalWrite(humRelayPin,LOW);
+  }
  
   myPID.Compute();
+  humPID.Compute();
   
 
 }

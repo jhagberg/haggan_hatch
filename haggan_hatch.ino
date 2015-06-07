@@ -1,6 +1,6 @@
 //0 hum ionizer relay pin
-//2 STH15 data pin
-//3 STH15 clock pin
+//A2 STH15 data pin
+//A3 STH15 clock pin
 //5     ONE wire bus
 //A5 DHT22 data pin
 //7 over heat fan 
@@ -57,13 +57,13 @@ PID myPID(&Input, &Output, &Setpoint,underKp,underKi,underKd, DIRECT);
 DHT dht(DHTPIN, DHTTYPE);
 
 // Specify data and clock connections and instantiate SHT1x object
-#define dataPin  2
-#define clockPin 3
+#define dataPin  A2
+#define clockPin A3
 SHT1x sht1x(dataPin, clockPin);
 
 #define RelayPin 8
 #define FanPin 7
-int WindowSize = 5000;
+int WindowSize = 4500;
 unsigned long windowStartTime;
 
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
@@ -270,7 +270,8 @@ void setup()
   Serial.begin(9600);
   myservo.attach(Servopin);  // attaches the servo on pin 6 to the servo object 
   myservo.write(93);
-  pinMode(FanPin, OUTPUT); 
+  pinMode(FanPin, OUTPUT);
+  digitalWrite(FanPin,HIGH); 
   pinMode(RelayPin, OUTPUT); 
   Setpoint = 37.5;
   lastMillis = millis(); 
@@ -318,7 +319,7 @@ void setup()
   webserver.begin();
   //  myPID.SetSampleTime(2000);
   //tell the PID to range between 0 and the full window size
-  myPID.SetOutputLimits(0, 1000);
+  myPID.SetOutputLimits(0, 1500);
 
   //turn the PID on
   myPID.SetMode(AUTOMATIC);
@@ -340,7 +341,8 @@ void loop()
   int avnum=0;
   int avnumhum=0;
   
-  if(Input>32)myPID.SetOutputLimits(0, 800);
+  if(Input>32)myPID.SetOutputLimits(0, 1000);
+  if(Input<32)myPID.SetOutputLimits(0, 1500);
 
 //  if(Input>37)myPID.SetOutputLimits(0, 500);
 
@@ -351,10 +353,13 @@ void loop()
     //Input = digitalSmooth(sensors.getTempCByIndex(1), tempSmoothArray); 
     FlexiTimer2::stop();
     dalltemp = sensors.getTempCByIndex(0); 
-    shttemp=sht1x.readTemperatureC();
-    shthum=sht1x.readHumidity();
+//    shttemp=sht1x.readTemperatureC();
+  //  shthum=sht1x.readHumidity();
     dhttemp=dht.readTemperature();
     dhthum=dht.readHumidity();
+
+    FlexiTimer2::start();
+
     
     if (!isnan(dhttemp) && dhttemp!=0.00)
       {
@@ -363,6 +368,7 @@ void loop()
       avnum++;
       avnumhum++;
       }
+/*
     if (shttemp>-39)
         {
         avrt=avrt+shttemp;
@@ -370,6 +376,7 @@ void loop()
         avnum++; 
         avnumhum++;
         }
+*/
     if(dalltemp!=85 && dalltemp!=-127)
        {
        avrt=avrt+dalltemp; 
@@ -383,17 +390,36 @@ void loop()
        //Input = K * avrt + (1 - K) * Input;
        //P = (1 - K) * P;
        
-       hihhum=HIH4030::read(PIN_HIH4030, Input);
-       if(hihhum>0 && hihhum<101)
+    //   hihhum=HIH4030::read(PIN_HIH4030, Input);
+  /*     if(hihhum>0 && hihhum<101)
         {
          avrh=avrh+hihhum;
          avnumhum++; 
         }
+*/
         //hum Avrage
         humidity=avrh/avnumhum;
+        Serial.print("TEMP: ");
+//	Serial.print(shttemp, DEC);        
+  //      Serial.print(",");
+	Serial.print(dhttemp, DEC);        
+        Serial.print(",");
+	Serial.print(dalltemp, DEC);        
+        Serial.print(",");
+	Serial.print(Input, DEC);
+        Serial.print(",");
+	Serial.println(Output, DEC);
+
+        Serial.print("HUMM: ");
+//	Serial.print(shthum, DEC);        
+  //      Serial.print(",");
+	Serial.print(dhthum, DEC);        
+  //      Serial.print(",");
+//	Serial.print(hihhum, DEC);        
+        Serial.print(",");
+	Serial.println(humidity, DEC);
         
-        
-    FlexiTimer2::start();
+
   }
 /*
 if (millis() - lastMillis2 > 120000)
@@ -419,7 +445,7 @@ if (millis() - lastMillis2 > 120000)
   //TURN EGG   
   if(minute() == 15 || minute() == 30 || minute() == 45 || minute() == 00 )
   { 
-    Serial.println(minute());
+    //Serial.println(minute());
     if(pos == 138) 
     {
       sign=-1;
@@ -434,8 +460,8 @@ if (millis() - lastMillis2 > 120000)
 
   //HEAT SAFETY
   if(Input>41) digitalWrite(RelayPin,LOW);
-  if(Input>34 && Input<38)myPID.SetTunings(consKp, consKi, consKd);
-  if(Input>38){
+  if(Input>34 && Input<40)myPID.SetTunings(consKp, consKi, consKd);
+  if(Input>40){
     myPID.SetTunings(underKp, underKi, underKd);
     //LOW is = ON
     digitalWrite(FanPin,LOW);

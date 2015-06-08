@@ -330,7 +330,7 @@ void setup()
   //  myPID.SetSampleTime(2000);
   //tell the PID to range between 0 and the full window size
   myPID.SetOutputLimits(0, 1500);
-  humPID.SetOutputLimits(200, 3000);
+  humPID.SetOutputLimits(200, 4500);
 
   //turn the PID on
   myPID.SetMode(AUTOMATIC);

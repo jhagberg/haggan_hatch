@@ -249,9 +249,36 @@ void sendTempHum(WebServer &server, WebServer::ConnectionType type, char *, bool
     server.printP(rightbracket);
   }
 
+}
+
+void changeHum(WebServer &server, WebServer::ConnectionType type, char *, bool)
+{
+
+  server.httpSuccess("Content-type: text/json");
+
+  
+
+  if (type != WebServer::HEAD)
+  {
+    if(humSetpoint==68)humSetpoint=50;
+    else if(humSetpoint==50)humSetpoint=68;
+    server.printP(leftbracket);
+    server.print(now());
+    server.print("000");
+    server.printP(semi);
+    server.print(humInput); 
+    server.printP(semi);
+    server.print(humOutput);
+    server.printP(semi);
+    server.print(humSetpoint);
+    server.printP(rightbracket);
+  }
+
 
 
 }
+
+
 void helloCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
 {
   server.httpSuccess();
@@ -324,6 +351,7 @@ void setup()
   /* run the same command if you try to load /index.html, a common
    * default page name */
   webserver.addCommand("live.php", &sendTempHum);
+  webserver.addCommand("changehum", &changeHum);
 
   /* start the webserver */
   webserver.begin();

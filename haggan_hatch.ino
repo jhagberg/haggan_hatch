@@ -288,9 +288,9 @@ void helloCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
     P(helloMsg)=
       "<!DOCTYPE html><html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">"
       "<title>Haggans Egg Hatcher</title>"
-      "<script type='text/javascript' src='http://192.168.1.147/jquery-2.1.0.js'></script>"
-      "<script src=\"http://192.168.1.147/highcharts.js\"></script>"
-      "<script src=\"http://192.168.1.147/egg.js\"></script>"
+      "<script type='text/javascript' src='http://192.168.1.219/jquery-2.1.0.js'></script>"
+      "<script src=\"http://192.168.1.219/highcharts.js\"></script>"
+      "<script src=\"http://192.168.1.219/egg.js\"></script>"
       "</head><body><h1>Haggans Egg hatcher </h1><div id=\"container\" style=\"height: 400px\"></div></body></html>";
     server.printP(helloMsg);
   }
